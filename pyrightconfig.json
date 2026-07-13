@@ -1,0 +1,34 @@
+{
+    "venvPath":  ".",
+    "venv":  ".venv",
+    "pythonVersion":  "3.14",
+    "pythonPlatform":  "Windows",
+    "include":  [
+                    "src",
+                    "app",
+                    "scripts",
+                    "config",
+                    "tests"
+                ],
+    "exclude":  [
+                    ".venv",
+                    "**/__pycache__",
+                    "**/*.pyc",
+                    ".pytest_cache",
+                    "models",
+                    "data",
+                    "logs"
+                ],
+    "typeCheckingMode":  "basic",
+    "useLibraryCodeForTypes":  true,
+    "reportMissingModuleSource":  "none",
+    "reportMissingImports":  "warning",
+    "extraPaths":  [
+                       "."
+                   ],
+    "executionEnvironments":  [
+                                  {
+                                      "root":  "."
+                                  }
+                              ]
+}

@@ -1,0 +1,63 @@
+# ============================================================
+# QuantTrade ML Pipeline — Production Requirements
+# Pinned to Python 3.14 pre-built wheel versions.
+# Install with: .venv\Scripts\pip install -r requirements.txt
+# ============================================================
+
+# Core Scientific Stack
+numpy>=2.4.0             # cp314 wheel available (numpy-2.4.6)
+pandas>=3.0.0            # cp314 wheel available (pandas-3.0.3)
+scipy>=1.18.0            # cp314 wheel available (scipy-1.18.0)
+
+# Machine Learning
+xgboost>=3.3.0           # py3-none-any wheel (xgboost-3.3.0)
+scikit-learn>=1.9.0      # cp314 wheel available (scikit-learn-1.9.0)
+optuna>=4.0.0            # py3-none-any wheel (optuna-4.9.0)
+joblib>=1.3.0            # py3-none-any wheel (joblib-1.5.3)
+shap>=0.44.0             # cp312-abi3 wheel (shap-0.52.0)
+
+# Data Storage & Serialization
+sqlalchemy>=2.0.0        # cp314 wheel available (sqlalchemy-2.0.51)
+pyarrow>=14.0.0          # cp314 wheel available (pyarrow-24.0.0)
+openpyxl>=3.1.0          # py2.py3-none-any wheel (openpyxl-3.1.5)
+
+# Technical Analysis
+ta>=0.11.0               # py3-none-any wheel (ta-0.11.0)
+
+# Visualization
+plotly>=5.18.0           # py3-none-any wheel (plotly-6.9.0)
+matplotlib>=3.8.0        # cp314 wheel available (matplotlib-3.11.0)
+seaborn>=0.13.0          # py3-none-any wheel (seaborn-0.13.2)
+kaleido>=0.2.1           # py3-none-any wheel (kaleido-1.3.0)
+
+# Streamlit Dashboard
+streamlit>=1.32.0        # py3-none-any wheel (streamlit-1.59.2)
+streamlit-option-menu>=0.3.12   # (streamlit-option-menu-0.4.0)
+streamlit-extras>=0.4.0         # (streamlit-extras-1.6.0)
+streamlit-aggrid>=0.3.4.post3   # (streamlit-aggrid-1.2.1.post2)
+
+# Configuration & Logging
+pydantic>=2.5.0          # py3-none-any wheel (pydantic-2.13.4)
+pydantic-settings>=2.1.0 # py3-none-any wheel (pydantic-settings-2.14.2)
+loguru>=0.7.2            # py3-none-any wheel (loguru-0.7.3)
+python-dotenv>=1.0.0     # py3-none-any wheel (python-dotenv-1.2.2)
+
+# API / Web Scraping
+apify-client>=1.7.0      # py3-none-any wheel (apify-client-3.0.5)
+requests>=2.31.0         # py3-none-any wheel (requests-2.34.2)
+httpx>=0.26.0            # py3-none-any wheel (httpx-0.28.1)
+
+# Utilities
+tqdm>=4.66.0             # py3-none-any wheel (tqdm-4.68.4)
+rich>=13.7.0             # py3-none-any wheel (rich-15.0.0)
+pytz>=2023.3             # py2.py3-none-any wheel (pytz-2026.2)
+python-dateutil>=2.8.2   # py2.py3-none-any wheel (python-dateutil-2.9.0.post0)
+
+# Testing
+pytest>=7.4.0            # py3-none-any wheel (pytest-9.1.1)
+pytest-cov>=4.1.0        # py3-none-any wheel (pytest-cov-7.1.0)
+pytest-mock>=3.12.0      # py3-none-any wheel (pytest-mock-3.15.1)
+
+# Development
+black>=24.0.0            # cp314 wheel available (black-26.5.1)
+isort>=5.13.0            # py3-none-any wheel (isort-8.0.1)
