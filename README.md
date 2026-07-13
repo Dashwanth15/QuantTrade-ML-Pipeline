@@ -59,7 +59,34 @@ Production-grade quantitative intelligence and ML-driven trading pipeline.
 
 ## Architecture Diagram
 
-> 📷 Architecture Diagram coming soon
+```mermaid
+flowchart TD
+    classDef db fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef module fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef frontend fill:#ffebee,stroke:#c62828,stroke-width:2px;
+
+    subgraph External
+        A[EUR/USD Data] --> B(Ingestion Layer):::module
+        C[Apify Macro API] --> B
+    end
+
+    B --> D[(SQLite / SQLAlchemy)]:::db
+    
+    subgraph ML Pipeline
+        D --> E(Data Validation & Cleaning):::module
+        E --> F(Feature Engineering):::module
+        F --> G(Strategy Simulation Engine):::module
+        G --> H(XGBoost Walk-Forward Training):::module
+        H --> I(SHAP Explainability):::module
+    end
+
+    I --> D
+    
+    subgraph Analytics
+        D --> J{Streamlit Dashboard}:::frontend
+        J --> K[Interactive Charts & KPIs]:::frontend
+    end
+```
 
 ---
 
