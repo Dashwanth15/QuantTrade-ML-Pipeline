@@ -5,6 +5,7 @@ Production-grade quantitative intelligence and ML-driven trading pipeline.
 ![Python](https://img.shields.io/badge/python-3.14-blue.svg)
 ![Machine Learning](https://img.shields.io/badge/ML-XGBoost-orange.svg)
 ![Framework](https://img.shields.io/badge/dashboard-Streamlit-red.svg)
+![Tests](https://img.shields.io/badge/tests-81%20passed-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ---
@@ -18,10 +19,11 @@ Production-grade quantitative intelligence and ML-driven trading pipeline.
 ## Quick Highlights
 
 - **Scale:** 93,000+ hourly EUR/USD candles (2005–2020) with live macroeconomic data scraping.
-- **Robustness:** Walk-forward validation with embargo to prevent lookahead bias.
+- **Robustness:** Timestamp-based walk-forward validation with embargo — works across any bar frequency.
 - **Explainability:** Full SHAP integration for model transparency.
 - **Optimization:** Automated hyperparameter tuning using Optuna TPE.
 - **Analytics:** 12+ interactive Plotly dashboards decoupled from execution logic.
+- **Reliability:** 81 automated tests covering ML pipeline, database, strategies, and validation.
 
 ---
 
@@ -36,11 +38,12 @@ Production-grade quantitative intelligence and ML-driven trading pipeline.
 - **Time Features:** Session encoding, cyclical hours/days
 - **Price Features:** Volatility windows, returns, spreads
 - **Technical Indicators:** Bollinger Bands, EMA, SMA
-- **Macro Features:** Impact scoring, event proximity
+- **Macro Features:** Priority-based event categorization, multi-keyword matching, matched category tracking
 
 ### Machine Learning
 - XGBoost Regressor for PnL prediction
-- 90/30 day walk-forward splits
+- Timestamp-driven walk-forward validation (supports minute, hourly, daily bars)
+- Embargo period to prevent look-ahead bias from lagged features
 - Optuna hyperparameter optimization
 - SHAP feature importance tracking
 
@@ -97,9 +100,10 @@ flowchart TD
 | **Language** | Python 3.14 |
 | **Machine Learning** | XGBoost, Scikit-learn, Optuna, SHAP |
 | **Data Processing** | Pandas, NumPy |
-| **Database** | SQLite, SQLAlchemy |
+| **Database** | SQLite, SQLAlchemy (timezone-aware) |
 | **Visualization** | Streamlit, Plotly Express |
 | **Ingestion** | Apify Client |
+| **Testing** | Pytest (81 tests) |
 
 ---
 
@@ -160,6 +164,35 @@ streamlit run app/main.py
 - Integrate deep learning models (LSTMs/Transformers).
 - Deploy dashboard via Docker and AWS ECS.
 - Expand macro scraping to more economic calendars.
+
+---
+
+## ✨ Recent Improvements
+
+The following upgrades were implemented after a technical review:
+
+- **Walk-Forward Validation** — Replaced row-offset arithmetic with `pd.Timedelta` timestamp logic. The validator now works correctly for any bar frequency (milliseconds, seconds, minutes, hours, days).
+- **Timezone-Aware Datetimes** — Removed all `datetime.utcnow()` calls (deprecated in Python 3.12+). All timestamps use `datetime.now(timezone.utc)`. SQLAlchemy models use `DateTime(timezone=True)`.
+- **Macro Classifier** — Replaced first-match-wins classification with a priority-ranked system. Every event now stores a `primary_category`, `matched_categories`, and `matched_keywords`.
+- **Test Coverage** — Expanded test suite to 81 tests covering the full ML pipeline, walk-forward validation across multiple frequencies, database layer, strategies, and feature engineering.
+
+---
+
+## 🧪 Testing
+
+```bash
+python -m pytest tests/ -v
+```
+
+| Suite | What It Covers |
+| :--- | :--- |
+| `test_pipeline.py` | ML pipeline, walk-forward validator (hourly/daily/minute) |
+| `test_validation.py` | Leakage checks, embargo enforcement, fold integrity |
+| `test_database.py` | ORM models, repository insert/load, session management |
+| `test_strategies.py` | Trading strategy signals and PnL calculations |
+| `test_features.py` | Time, price, and technical feature generation |
+
+**Current status: ✅ 81 tests passed**
 
 ---
 
