@@ -54,40 +54,43 @@ COUNTRY_CURRENCY_MAP = {
     "New Zealand": "NZD",
 }
 
-CATEGORY_MAP = {
-    "CPI": "inflation",
-    "Consumer Price Index": "inflation",
-    "PPI": "inflation",
-    "PCE": "inflation",
-    "Inflation": "inflation",
-    "FOMC": "monetary_policy",
-    "Federal Reserve": "monetary_policy",
-    "Interest Rate": "monetary_policy",
-    "Rate Decision": "monetary_policy",
-    "ECB": "monetary_policy",
-    "Bank of England": "monetary_policy",
-    "BoE": "monetary_policy",
-    "GDP": "growth",
-    "Gross Domestic": "growth",
-    "Industrial Production": "growth",
-    "PMI": "growth",
-    "ISM": "growth",
-    "Non-Farm": "employment",
-    "NFP": "employment",
-    "Payroll": "employment",
-    "Employment": "employment",
-    "Unemployment": "employment",
-    "ADP": "employment",
-    "Retail Sales": "consumption",
-    "Consumer Confidence": "consumption",
-    "Consumer Sentiment": "consumption",
-    "Trade Balance": "trade",
-    "Current Account": "trade",
-    "Exports": "trade",
-    "Imports": "trade",
-    "Housing": "housing",
-    "Durable Goods": "manufacturing",
-}
+# Priority-ranked category definitions.
+# Lower number = higher priority. Used to resolve ambiguous multi-keyword matches.
+# Each entry: (priority, category_label, [keyword_list])
+_CATEGORY_RULES: list[tuple[int, str, list[str]]] = [
+    (1, "monetary_policy", [
+        "FOMC", "Federal Reserve", "Fed", "Interest Rate", "Rate Decision",
+        "ECB", "Bank of England", "BoE", "BoJ", "Bank of Japan",
+        "Monetary Policy", "Rate Statement", "Quantitative Easing",
+    ]),
+    (2, "inflation", [
+        "CPI", "Consumer Price Index", "PPI", "PCE",
+        "Inflation", "Core Inflation", "Deflation",
+    ]),
+    (3, "employment", [
+        "Non-Farm", "NFP", "Payroll", "Employment", "Unemployment",
+        "ADP", "Jobless", "Labor", "Jobs Report",
+    ]),
+    (4, "growth", [
+        "GDP", "Gross Domestic", "Industrial Production", "PMI",
+        "ISM", "Manufacturing", "Services PMI", "Composite PMI",
+    ]),
+    (5, "consumption", [
+        "Retail Sales", "Consumer Confidence", "Consumer Sentiment",
+        "Personal Spending", "Personal Consumption",
+    ]),
+    (6, "trade", [
+        "Trade Balance", "Current Account", "Exports", "Imports",
+        "Trade Deficit", "Trade Surplus",
+    ]),
+    (7, "housing", [
+        "Housing", "Building Permits", "Housing Starts",
+        "Existing Home Sales", "New Home Sales",
+    ]),
+    (8, "manufacturing", [
+        "Durable Goods", "Factory Orders", "Capacity Utilization",
+    ]),
+]
 
 
 class MacroEventScraper:
@@ -342,8 +345,11 @@ class MacroEventScraper:
         # Currency from country
         df["currency"] = df["country"].map(COUNTRY_CURRENCY_MAP).fillna("OTHER")
 
-        # Category
-        df["category"] = df["event_name"].apply(self._classify_category)
+        # Multi-label priority-ranked category classification
+        classification_results = df["event_name"].apply(self._classify_category)
+        df["category"]          = classification_results.apply(lambda r: r["primary_category"])
+        df["matched_categories"] = classification_results.apply(lambda r: r["matched_categories"])
+        df["matched_keywords"]   = classification_results.apply(lambda r: r["matched_keywords"])
 
         # Surprise = actual - forecast
         df["surprise"] = df["actual"] - df["forecast"]
@@ -360,12 +366,60 @@ class MacroEventScraper:
 
         return df
 
-    def _classify_category(self, event_name: str) -> str:
+    def _classify_category(self, event_name: str) -> dict:
+        """
+        Priority-ranked, multi-label macro category classifier.
+
+        Collects ALL matching categories, then resolves to the highest-priority
+        one deterministically. Never depends on dict insertion order.
+
+        Returns a dict with:
+            primary_category  - highest-priority matched category (str)
+            matched_categories - all matched categories sorted by priority (list[str])
+            matched_keywords   - all matched keyword strings (list[str])
+        """
         event_upper = event_name.upper()
-        for keyword, category in CATEGORY_MAP.items():
-            if keyword.upper() in event_upper:
-                return category
-        return "other"
+        matches: list[tuple[int, str, str]] = []  # (priority, category, keyword)
+
+        for priority, category, keywords in _CATEGORY_RULES:
+            for kw in keywords:
+                if kw.upper() in event_upper:
+                    matches.append((priority, category, kw))
+
+        if not matches:
+            logger.debug("Category: '{}' → 'other' (no keyword match)", event_name)
+            return {
+                "primary_category": "other",
+                "matched_categories": [],
+                "matched_keywords": [],
+            }
+
+        # Sort by priority (ascending = highest priority first)
+        matches.sort(key=lambda x: x[0])
+
+        primary_priority, primary_category, _ = matches[0]
+        matched_categories = list(dict.fromkeys(c for _, c, _ in matches))  # ordered unique
+        matched_keywords   = [kw for _, _, kw in matches]
+
+        if len(matched_categories) > 1:
+            logger.debug(
+                "Category: '{}' → '{}' (priority {}); also matched: {}",
+                event_name,
+                primary_category,
+                primary_priority,
+                matched_categories[1:],
+            )
+        else:
+            logger.debug(
+                "Category: '{}' → '{}'",
+                event_name, primary_category,
+            )
+
+        return {
+            "primary_category": primary_category,
+            "matched_categories": matched_categories,
+            "matched_keywords": matched_keywords,
+        }
 
     @staticmethod
     def _parse_timestamp(raw: Any) -> str | None:

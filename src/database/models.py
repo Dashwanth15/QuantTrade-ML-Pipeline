@@ -4,13 +4,16 @@ Defines the complete database schema for all data artifacts.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON, Boolean, Column, DateTime, Float, Index, Integer,
     String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase
+
+# Canonical timezone-aware UTC timestamp — replaces deprecated datetime.utcnow
+_utcnow = lambda: datetime.now(timezone.utc)  # noqa: E731
 
 
 class Base(DeclarativeBase):
@@ -73,7 +76,7 @@ class MacroEvent(Base):
     category = Column(String(50))
     is_high_impact = Column(Boolean, default=False)
     eurusd_relevant = Column(Boolean, default=True)
-    scraped_at = Column(DateTime, default=datetime.utcnow)
+    scraped_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class Trade(Base):
@@ -116,7 +119,7 @@ class ModelRun(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     run_id = Column(String(50), unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
     model_type = Column(String(50), default="xgboost")
     target_variable = Column(String(50))
     n_features = Column(Integer)
@@ -185,7 +188,7 @@ class Prediction(Base):
     confidence_lower = Column(Float)
     confidence_upper = Column(Float)
     actual_pnl = Column(Float)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class StrategyPerformance(Base):
@@ -209,7 +212,7 @@ class StrategyPerformance(Base):
     avg_holding_bars = Column(Float)
     best_month_pnl = Column(Float)
     worst_month_pnl = Column(Float)
-    computed_at = Column(DateTime, default=datetime.utcnow)
+    computed_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class FeatureImportanceRecord(Base):

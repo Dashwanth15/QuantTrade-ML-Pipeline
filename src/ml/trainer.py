@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -45,7 +45,7 @@ class ModelTrainer:
         tune_hyperparams: bool = True,
         target_col: str = "pnl_usd",
     ) -> None:
-        self.run_id = run_id or f"run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:6]}"
+        self.run_id = run_id or f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:6]}"
         self.tune_hyperparams = tune_hyperparams
         self.target_col = target_col
         self.model_path = Path(settings.model_path) / f"{self.run_id}.joblib"
@@ -181,7 +181,7 @@ class ModelTrainer:
                 "all_actuals": all_actuals,
                 "shap_importance": shap_importance.to_dict("records") if not shap_importance.empty else [],
                 "xgb_importance": xgb_importance.to_dict("records") if not xgb_importance.empty else [],
-                "trained_at": datetime.utcnow().isoformat(),
+                "trained_at": datetime.now(timezone.utc).isoformat(),
             },
             self.model_path,
             compress=3,

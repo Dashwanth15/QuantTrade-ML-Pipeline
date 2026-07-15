@@ -242,6 +242,81 @@ class TestXGBoostTuner:
         assert 0 < params["learning_rate"] < 1
 
 
+# ── Walk-Forward Validator Unit Tests ───────────────────────────────────────
+
+class TestWalkForwardValidator:
+    """Tests that the validator works across multiple bar frequencies."""
+
+    def _make_df(self, n: int, freq: str) -> pd.DataFrame:
+        dates = pd.date_range("2015-01-01", periods=n, freq=freq, tz="UTC")
+        return pd.DataFrame({"x": np.random.rand(n)}, index=dates)
+
+    def test_hourly_generates_folds(self):
+        df = self._make_df(500, "h")
+        wf = WalkForwardValidator(train_days=10, test_days=3, step_days=3, embargo_days=1)
+        folds = wf.split(df)
+        assert len(folds) > 0
+
+    def test_daily_generates_folds(self):
+        df = self._make_df(500, "D")
+        wf = WalkForwardValidator(train_days=90, test_days=30, step_days=30, embargo_days=5)
+        folds = wf.split(df)
+        assert len(folds) > 0
+
+    def test_minute_generates_folds(self):
+        df = self._make_df(5000, "min")
+        wf = WalkForwardValidator(train_days=2, test_days=1, step_days=1, embargo_days=0)
+        folds = wf.split(df)
+        assert len(folds) > 0
+
+    def test_no_leakage_hourly(self):
+        df = self._make_df(500, "h")
+        wf = WalkForwardValidator(train_days=10, test_days=3, step_days=3, embargo_days=1)
+        folds = wf.split(df)
+        assert wf.verify_no_leakage(folds)
+
+    def test_no_leakage_daily(self):
+        df = self._make_df(500, "D")
+        wf = WalkForwardValidator(train_days=60, test_days=20, step_days=20, embargo_days=3)
+        folds = wf.split(df)
+        assert wf.verify_no_leakage(folds)
+
+    def test_train_end_before_test_start(self):
+        """train_end must always be strictly before test_start across all folds."""
+        df = self._make_df(500, "h")
+        wf = WalkForwardValidator(train_days=10, test_days=3, step_days=3, embargo_days=1)
+        folds = wf.split(df)
+        for fold in folds:
+            assert fold.train_end < fold.test_start, (
+                f"Fold {fold.fold_index}: train_end={fold.train_end} >= test_start={fold.test_start}"
+            )
+
+    def test_requires_datetime_index(self):
+        df_bad = pd.DataFrame({"x": [1, 2, 3]})
+        wf = WalkForwardValidator(train_days=1, test_days=1, step_days=1)
+        with pytest.raises(TypeError, match="DatetimeIndex"):
+            wf.split(df_bad)
+
+    def test_fold_masks_mutually_exclusive(self):
+        """No row should appear in both train and test mask."""
+        df = self._make_df(300, "h")
+        wf = WalkForwardValidator(train_days=7, test_days=3, step_days=3, embargo_days=1)
+        folds = wf.split(df)
+        for fold in folds:
+            overlap = fold.train_mask & fold.test_mask
+            assert not overlap.any(), f"Fold {fold.fold_index} has train/test overlap"
+
+    def test_fold_counts_per_resolution(self):
+        """Hourly and minute data with the same calendar window should yield similar fold counts."""
+        df_hourly = self._make_df(24 * 120, "h")   # 120 days of hourly data
+        df_minute = self._make_df(60 * 24 * 120, "min")  # 120 days of minute data
+        wf = WalkForwardValidator(train_days=30, test_days=10, step_days=10, embargo_days=2)
+        folds_h = wf.split(df_hourly)
+        folds_m = wf.split(df_minute)
+        # Should produce the same number of folds since windows are in calendar days
+        assert len(folds_h) == len(folds_m)
+
+
 # ── Full Walk-Forward Pipeline Integration Test ──────────────────────────────
 
 class TestWalkForwardPipelineIntegration:
@@ -249,12 +324,12 @@ class TestWalkForwardPipelineIntegration:
         """
         End-to-end test: prepare data → generate folds →
         train XGBoost per fold → evaluate.
-        Uses 2-fold mini walk-forward to keep it fast.
+        Uses small windows to keep it fast.
         """
         X, y, timestamps = prepare_ml_dataset(synthetic_feature_df, synthetic_trade_log)
         evaluator = ModelEvaluator()
 
-        # Create validator with very small windows to fit in 100 samples
+        # Create validator with very small windows to fit in available samples
         wf = WalkForwardValidator(train_days=2, test_days=1, step_days=1, embargo_days=0)
         indexed = X.copy()
         indexed.index = timestamps.values
@@ -271,7 +346,7 @@ class TestWalkForwardPipelineIntegration:
             y_test = y[fold.test_mask]
 
             if len(X_train) < 10 or len(X_test) < 5:
-                continue  # Skip underpopulated folds
+                continue
 
             pipeline = build_xgboost_pipeline(XGBoostTuner._default_params())
             pipeline.fit(X_train, y_train)
